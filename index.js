@@ -23,7 +23,10 @@ app.get("/words", async (_, res) => {
 	try {
 		await client.connect();
 		let db = client.db(DB);
-		let response = await db.collection("words").find().toArray();
+		let response = await db
+			.collection("words")
+			.find({}, { projection: { _id: 0 } })
+			.toArray();
 		res.json(response);
 	} catch (error) {
 		res.json({ message: "Error in GET", error });
@@ -45,13 +48,36 @@ app.put("/words/:id", async (req, res) => {
 	try {
 		await client.connect();
 		let db = client.db(DB);
-		let update = await db
-			.collection("words")
-			.updateOne(
-				{ id: parseInt(req.params.id) },
-				{ $push: { meanings: JSON.parse(JSON.stringify(req.body)) } }
+		let id = req.params.id.split("-");
+		let wordId;
+		let meaningId;
+		if (id.length > 1) {
+			wordId = parseInt(id[0]);
+			meaningId = parseInt(id[1]);
+			let updateField = {};
+			updateField[`meanings.$.${req.body.type}`] = 1;
+			let updateInteraction = await db.collection("words").updateOne(
+				{
+					id: wordId,
+					"meanings.id": { $eq: meaningId },
+				},
+				{
+					$inc: updateField,
+				}
 			);
-		res.json(update);
+			res.json(updateInteraction);
+		} else {
+			wordId = parseInt(req.params.id);
+			let update = await db.collection("words").updateOne(
+				{ id: wordId },
+				{
+					$push: {
+						meanings: JSON.parse(JSON.stringify(req.body)),
+					},
+				}
+			);
+			res.json(update);
+		}
 	} catch (error) {
 		console.log(error);
 	}
