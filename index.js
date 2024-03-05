@@ -19,6 +19,10 @@ app.use(express.json());
 
 const client = new MongoClient(URI);
 
+app.get('/', (req, res) => {
+  res.send('Hello APIs')
+})
+
 app.get("/words", async (_, res) => {
 	try {
 		await client.connect();
